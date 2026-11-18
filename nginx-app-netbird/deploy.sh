@@ -14,15 +14,15 @@ push() {
 
 echo ">> Deploying the NetBird web UI to ${ROUTER}..."
 
-ssh "$ROUTER" "mkdir -p /www/netbird /www/cgi-bin /usr/libexec /usr/share/gl-ngx /etc/nginx/gl-conf.d"
+ssh "$ROUTER" "mkdir -p /www/netbird /usr/libexec /usr/share/gl-ngx /etc/nginx/gl-conf.d"
 push "$DIR/index.html"             /www/netbird/index.html 644
-push "$DIR/netbird-api.cgi"        /www/cgi-bin/netbird-api 755
+push "$DIR/netbird-api.cgi"        /usr/libexec/netbird-api.cgi 755
 push "$DIR/netbird-access.lua"     /usr/share/gl-ngx/netbird-access.lua 644
 push "$DIR/netbird.conf"           /etc/nginx/gl-conf.d/netbird.conf 644
 push "$DIR/netbird-toggle-exit.sh" /usr/libexec/netbird-toggle-exit.sh 755
 push "$DIR/netbird-setup-api.sh"   /usr/libexec/netbird-setup-api.sh 755
 
-ssh "$ROUTER" "rm -rf /var/run/netbird-cgi.lock && nginx -t && nginx -s reload"
+ssh "$ROUTER" "rm -rf /var/run/netbird-cgi.lock /www/cgi-bin/netbird-api && nginx -t && nginx -s reload"
 
 echo ""
 echo ">> Done. Open the GL.iNet admin panel → Applications → NetBird"

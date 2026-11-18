@@ -1,6 +1,6 @@
 #!/bin/sh
 # NetBird JSON API CGI
-# Deploy to: /www/cgi-bin/netbird-api  (chmod +x)
+# Deploy to: /usr/libexec/netbird-api.cgi (served at /netbird/api by nginx + fcgiwrap)
 # GET  → status JSON
 # POST → action JSON (action= in url-encoded body)
 
