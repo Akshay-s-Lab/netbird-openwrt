@@ -12,7 +12,7 @@
 
 set -e
 
-NETBIRD_VERSION="0.74.7"
+NETBIRD_VERSION="0.82.0"
 MGMT_URL="${1:-https://your-netbird-server.example.com:443}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
