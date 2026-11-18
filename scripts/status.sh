@@ -14,7 +14,7 @@ if pgrep -x netbird >/dev/null 2>&1; then
     netbird status 2>/dev/null || echo "  (netbird status unavailable)"
 else
     echo "  Status: NOT RUNNING"
-    echo "  Start:  sh /tmp/start-daemon.sh"
+    echo "  Start:  /etc/init.d/netbird start"
 fi
 
 echo ""
@@ -53,7 +53,7 @@ fi
 
 echo ""
 echo "── Recent logs ──────────────────────────────────"
-tail -10 /var/log/netbird/client.log 2>/dev/null || echo "  (no log file)"
+logread -e netbird 2>/dev/null | tail -10 || echo "  (no log entries)"
 
 echo ""
 echo "── Storage ──────────────────────────────────────"

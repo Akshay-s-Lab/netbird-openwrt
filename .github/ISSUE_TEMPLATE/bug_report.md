@@ -23,7 +23,7 @@ Output of: `netbird version`
 paste here
 ```
 
-**Log tail (`tail -50 /var/log/netbird/client.log`)**
+**Log tail (`logread -e netbird | tail -50`)**
 ```
 paste here
 ```

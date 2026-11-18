@@ -330,18 +330,29 @@ hr.sep { border: none; border-top: 1px solid #f3f4f6; margin: 14px 0; }
       <label class="field-label" for="setup-key">
         Setup Key
         <span style="font-weight:400;color:#9ca3af;font-size:12px">
-          — dashboard → Setup Keys → Reusable
+          — optional
         </span>
       </label>
       <input id="setup-key" class="field-input" type="text"
              placeholder="XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
              autocomplete="off" spellcheck="false">
-      <div class="field-hint">Leave blank to reconnect using an existing enrollment.</div>
+      <div class="field-hint">Leave blank to sign in from any browser with a one-time link, or to reconnect an existing enrollment.</div>
     </div>
   </div>
 
   <div class="apply-row">
     <button id="btn-apply" class="btn-apply" onclick="applyConfig()">Apply</button>
+  </div>
+</div>
+
+<!-- ── Sign-in (shown while a device-code login is waiting) ── -->
+<div id="login-card" class="card" hidden>
+  <div class="section-title">Sign in</div>
+  <div class="field-hint" style="margin-top:0">Open this link on any device and approve the router.</div>
+  <div class="stat-row"><span class="stat-label">Link</span> <a id="login-url" class="stat-val" target="_blank" rel="noopener noreferrer"></a></div>
+  <div class="stat-row" id="login-code-row" hidden><span class="stat-label">Code</span> <span id="login-code" class="stat-val"></span></div>
+  <div class="btn-row">
+    <button class="btn btn-neutral" onclick="act('cancel_login')">Cancel</button>
   </div>
 </div>
 
@@ -464,6 +475,9 @@ hr.sep { border: none; border-top: 1px solid #f3f4f6; margin: 14px 0; }
     if (connected) {
       badge.className = 'status-badge running';
       badge.textContent = '● Connected';
+    } else if (running && data.daemon_state === 'NeedsLogin') {
+      badge.className = 'status-badge connecting';
+      badge.textContent = data.login_active ? '● Waiting for sign-in' : '● Sign-in needed';
     } else if (running) {
       badge.className = 'status-badge connecting';
       badge.textContent = '● Connecting…';
@@ -485,6 +499,20 @@ hr.sep { border: none; border-top: 1px solid #f3f4f6; margin: 14px 0; }
       var urlEl = document.getElementById('setup-url');
       if (!urlEl.dataset.touched) urlEl.value = data.mgmt_url;
     }
+
+    /* Device-code sign-in */
+    var loginUrl = data.login_active ? (data.login_url || '') : '';
+    document.getElementById('login-card').hidden = !loginUrl;
+    var loginLink = document.getElementById('login-url');
+    if (/^https:\/\//.test(loginUrl)) {
+      loginLink.href = loginUrl;
+      loginLink.textContent = loginUrl;
+    } else {
+      loginLink.removeAttribute('href');
+      loginLink.textContent = '';
+    }
+    document.getElementById('login-code-row').hidden = !data.login_code;
+    setText('login-code', data.login_code);
 
     /* Show/hide status card */
     document.getElementById('status-card').hidden = !running;
@@ -536,17 +564,27 @@ hr.sep { border: none; border-top: 1px solid #f3f4f6; margin: 14px 0; }
       tbody.innerHTML = '<tr class="empty-row"><td colspan="5">No peers yet</td></tr>';
     } else {
       peers.forEach(function (p) {
-        var st  = (p.status || '').toLowerCase();
-        var dot = '<span class="status-dot dot-' + (st || 'idle') + '"></span>';
-        var name = (p.name || '').replace('.netbird.selfhosted', '');
-        var row = '<tr>' +
-          '<td title="' + (p.name || '') + '">' + name + '</td>' +
-          '<td>' + (p.ip || '') + '</td>' +
-          '<td>' + dot + (p.status || '') + '</td>' +
-          '<td>' + (p.conn_type || p.type || '—') + '</td>' +
-          '<td>' + (p.latency || '—') + '</td>' +
-          '</tr>';
-        tbody.innerHTML += row;
+        var st  = (p.status || 'idle').toLowerCase().replace(/[^a-z]/g, '');
+        var row = document.createElement('tr');
+        var cells = [
+          (p.name || '').split('.')[0],
+          p.ip || '',
+          p.status || '',
+          p.conn_type || p.type || '—',
+          p.latency || '—'
+        ];
+        cells.forEach(function (text, i) {
+          var td = document.createElement('td');
+          if (i === 2) {
+            var dot = document.createElement('span');
+            dot.className = 'status-dot dot-' + st;
+            td.appendChild(dot);
+          }
+          td.appendChild(document.createTextNode(text));
+          if (i === 0) td.title = p.name || '';
+          row.appendChild(td);
+        });
+        tbody.appendChild(row);
       });
     }
 
@@ -605,6 +643,7 @@ hr.sep { border: none; border-top: 1px solid #f3f4f6; margin: 14px 0; }
     var labels = {
       quick_setup:  'Connecting…',
       connect:      'Connecting…',
+      cancel_login: 'Cancelling sign-in…',
       disconnect:   'Stopping…',
       restart:      'Restarting…',
       toggle_exit:  'Toggling exit node…',

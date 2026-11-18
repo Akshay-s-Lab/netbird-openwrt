@@ -6,7 +6,7 @@ Use the GitHub issue tracker. Include:
 - Router model and firmware version (`cat /etc/openwrt_release`)
 - NetBird version (`netbird version`)
 - Output of `netbird status --detail`
-- Relevant log lines (`tail -50 /var/log/netbird/client.log`)
+- Relevant log lines (`logread -e netbird | tail -50`)
 
 ## Pull requests
 
