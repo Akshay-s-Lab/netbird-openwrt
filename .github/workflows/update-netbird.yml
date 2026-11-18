@@ -1,0 +1,74 @@
+name: Update NetBird
+
+on:
+  schedule:
+    - cron: "30 0 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: update-netbird
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - name: Find the latest NetBird release
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          latest="$(gh release view --repo netbirdio/netbird --json tagName --jq .tagName)"
+          latest="${latest#v}"
+          current="$(sed -n 's/^NETBIRD_VERSION="\(.*\)"$/\1/p' scripts/install.sh)"
+          if ! printf '%s' "$latest" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "Unexpected release tag: $latest" >&2
+            exit 1
+          fi
+          echo "current=$current" >> "$GITHUB_OUTPUT"
+          echo "latest=$latest" >> "$GITHUB_OUTPUT"
+          if [ "$latest" = "$current" ]; then
+            echo "NetBird $current is already the latest release."
+          fi
+
+      - name: Check the linux/arm64 build exists
+        if: steps.release.outputs.latest != steps.release.outputs.current
+        env:
+          VERSION: ${{ steps.release.outputs.latest }}
+        run: |
+          curl -fsSIL -o /dev/null \
+            "https://github.com/netbirdio/netbird/releases/download/v${VERSION}/netbird_${VERSION}_linux_arm64.tar.gz"
+
+      - name: Open a pull request
+        if: steps.release.outputs.latest != steps.release.outputs.current
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CURRENT: ${{ steps.release.outputs.current }}
+          VERSION: ${{ steps.release.outputs.latest }}
+        run: |
+          branch="update-netbird/v${VERSION}"
+          if git ls-remote --exit-code --heads origin "$branch" >/dev/null; then
+            echo "Branch $branch already exists."
+            exit 0
+          fi
+          sed -i "s/^NETBIRD_VERSION=\".*\"$/NETBIRD_VERSION=\"${VERSION}\"/" scripts/install.sh
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git commit -am "Bump pinned NetBird version to v${VERSION}"
+          git push origin "$branch"
+          gh pr create \
+            --base main \
+            --head "$branch" \
+            --title "Bump pinned NetBird version to v${VERSION}" \
+            --body "Updates the pinned NetBird client from v${CURRENT} to v${VERSION}.
+
+          Release notes: https://github.com/netbirdio/netbird/releases/tag/v${VERSION}
+
+          The linux/arm64 tarball for v${VERSION} exists. Check the release notes for changes to the \`up\`, \`service run\`, \`status\` and \`down\` flags, the status output fields, and the daemon socket path before merging."
