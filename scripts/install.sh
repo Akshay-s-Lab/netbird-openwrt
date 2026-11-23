@@ -3,7 +3,7 @@
 
 set -e
 
-NETBIRD_VERSION="0.83.1"
+NETBIRD_VERSION="0.83.2"
 ROUTER="${1:-root@192.168.8.1}"
 MGMT_URL="$2"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
